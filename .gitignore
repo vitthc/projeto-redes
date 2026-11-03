@@ -1,4 +1,5 @@
-   .venv/
-   server/data.db
-   server/server.log
-   __pycache__/
+.venv/
+__pycache__/
+*.pyc
+server/data.db
+server/server.log

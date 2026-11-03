@@ -1,0 +1,600 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Painel — Monitoramento de Laboratório</title>
+<link rel="icon" href="data:,">
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #ffffff; --ink: #1b2130; --muted: #667085; --line: #e3e6eb;
+    --accent: #2563eb; --ok: #16a34a; --warn: #d97706; --bad: #dc2626; --soft-bad: #fdecec;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0e1117; --card: #161a22; --ink: #e6e8ec; --muted: #98a2b3; --line: #29303b;
+      --accent: #60a5fa; --soft-bad: #3a1d1f;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+         background: var(--bg); color: var(--ink); }
+  header { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center;
+           gap: 10px 18px; padding: 12px 20px; background: var(--card); border-bottom: 1px solid var(--line); }
+  header h1 { font-size: 16px; margin: 0; font-weight: 650; margin-right: auto; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px;
+          border: 1px solid var(--line); font-size: 12.5px; white-space: nowrap; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); display: inline-block; }
+  .dot.on { background: var(--ok); } .dot.off { background: var(--bad); } .dot.wait { background: var(--warn); }
+  .stat { font-size: 12.5px; color: var(--muted); white-space: nowrap; }
+  .stat b { color: var(--ink); font-variant-numeric: tabular-nums; font-weight: 600; }
+  main { display: grid; grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr); gap: 16px;
+         padding: 16px 20px 40px; max-width: 1440px; margin: 0 auto; }
+  @media (max-width: 960px) { main { grid-template-columns: 1fr; } }
+  .col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; min-width: 0; }
+  .card h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted);
+             margin: 0 0 10px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  .card h2 .grow { flex: 1; }
+  .sensors { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+  .sensor { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; border-left: 4px solid var(--c, var(--accent)); }
+  .sensor.alert { background: var(--soft-bad); border-color: var(--bad); }
+  .sensor .name { font-weight: 600; display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+  .sensor .name small { font-weight: 400; color: var(--muted); font-size: 12px; display: inline-flex; align-items: center; gap: 5px; }
+  .sensor .temp { font-size: 28px; font-weight: 650; font-variant-numeric: tabular-nums; margin-top: 4px; }
+  .sensor .hum { color: var(--ink); font-variant-numeric: tabular-nums; }
+  .sensor .meta { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .empty { color: var(--muted); font-style: italic; }
+  canvas { width: 100%; height: 280px; display: block; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12.5px; color: var(--muted); margin-top: 8px; }
+  .legend span::before { content: ""; display: inline-block; width: 12px; height: 3px; border-radius: 2px;
+                         background: var(--c); vertical-align: middle; margin-right: 5px; }
+  .legend .th::before { background: none; border-top: 2px dashed var(--bad); height: 0; }
+  ul.alerts { list-style: none; margin: 0; padding: 0; max-height: 260px; overflow: auto; }
+  ul.alerts li { padding: 7px 4px; border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 2px 8px; }
+  ul.alerts li .t { color: var(--muted); font-size: 12px; margin-left: auto; }
+  ul.alerts li.new { animation: flash 2.5s ease-out; }
+  @keyframes flash { from { background: var(--soft-bad); } to { background: transparent; } }
+  form { display: grid; gap: 8px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: end; }
+  label { display: grid; gap: 3px; font-size: 12.5px; color: var(--muted); flex: 1; min-width: 110px; }
+  input, select, button { font: inherit; color: var(--ink); background: var(--card); border: 1px solid var(--line);
+                          border-radius: 7px; padding: 6px 9px; }
+  input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  button { cursor: pointer; background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  button.ghost { background: transparent; color: var(--ink); border-color: var(--line); font-weight: 500; }
+  button:disabled { opacity: .55; cursor: default; }
+  .msg { font-size: 12.5px; min-height: 1em; }
+  .msg.ok { color: var(--ok); } .msg.bad { color: var(--bad); }
+  .tokenbox { display: none; border: 1px dashed var(--line); border-radius: 8px; padding: 8px 10px; font-size: 12.5px; }
+  .tokenbox code { font-family: var(--mono); word-break: break-all; display: block; margin: 4px 0; }
+  .tablewrap { max-height: 360px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; }
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; font-size: 13px; }
+  th, td { text-align: left; padding: 5px 9px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th { position: sticky; top: 0; background: var(--card); color: var(--muted); font-weight: 600; font-size: 12px; }
+  td.num, th.num { text-align: right; }
+  .note { color: var(--muted); font-size: 12px; margin: 6px 0 0; }
+  .log { font: 12px/1.5 var(--mono); max-height: 240px; overflow: auto; }
+  .log div { padding: 1px 0; border-bottom: 1px dotted var(--line); }
+  .log .t { color: var(--muted); }
+  .log .warn { color: var(--warn); } .log .bad { color: var(--bad); }
+  .rtt-result { font-size: 12.5px; font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Monitoramento de Laboratório</h1>
+  <span class="pill" id="conn"><span class="dot wait"></span><span>conectando…</span></span>
+  <span class="stat">sensores online <b id="online-count">0</b></span>
+  <span class="stat">mensagens/s <b id="rate">0,0</b></span>
+  <span class="stat">limiar temp. <b id="th-temp">—</b></span>
+</header>
+
+<main>
+  <div class="col">
+    <section class="card">
+      <h2><span class="grow">Sensores</span><label style="display:flex;flex-direction:row;align-items:center;gap:5px;flex:none;min-width:0;text-transform:none;letter-spacing:0;font-weight:400"><input type="checkbox" id="show-test" style="padding:0"> mostrar sensores dos experimentos (exp-*)</label></h2>
+      <div class="sensors" id="sensors"><p class="empty" id="no-sensors">Nenhum sensor cadastrado ainda.</p></div>
+    </section>
+
+    <section class="card">
+      <h2>Temperatura — últimos 2 minutos</h2>
+      <canvas id="chart"></canvas>
+      <div class="legend" id="legend"><span class="th">limiar</span></div>
+    </section>
+
+    <section class="card">
+      <h2><span class="grow">Histórico (HTTP GET /history)</span></h2>
+      <form id="history-form" class="row">
+        <label>Sensor <select id="hist-device"><option value="">todos</option></select></label>
+        <label>Quantidade <select id="hist-limit"><option>50</option><option selected>100</option><option>500</option><option>1000</option></select></label>
+        <button type="submit">Consultar</button>
+        <button type="button" class="ghost" id="hist-csv" disabled>Exportar CSV</button>
+      </form>
+      <p class="msg" id="hist-msg"></p>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Horário (servidor)</th><th>Sensor</th><th class="num">seq</th><th class="num">Temp. (°C)</th><th class="num">Umid. (%)</th><th class="num">Sensor→servidor (ms)</th></tr></thead>
+          <tbody id="hist-body"><tr><td colspan="6" class="empty">Faça uma consulta.</td></tr></tbody>
+        </table>
+      </div>
+      <p class="note">A coluna "sensor→servidor" só é confiável quando sensor e servidor rodam na mesma máquina (mesmo relógio).</p>
+    </section>
+  </div>
+
+  <div class="col">
+    <section class="card">
+      <h2><span class="grow">Alertas</span></h2>
+      <ul class="alerts" id="alerts"><li class="empty" id="no-alerts">Nenhum alerta.</li></ul>
+    </section>
+
+    <section class="card">
+      <h2>Limiares (HTTP PUT /thresholds)</h2>
+      <form id="th-form">
+        <div class="row">
+          <label>Temp. máxima (°C) <input type="number" id="th-temp-in" step="0.1" min="-40" max="85" required></label>
+          <label>Umid. máxima (%) <input type="number" id="th-hum-in" step="0.1" min="0" max="100" required></label>
+        </div>
+        <button type="submit">Salvar limiares</button>
+        <p class="msg" id="th-msg"></p>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>Cadastrar sensor (HTTP POST /devices)</h2>
+      <form id="dev-form">
+        <label>device_id <input id="dev-id" placeholder="sensor-03" pattern="[A-Za-z0-9_\-]{3,32}" required></label>
+        <button type="submit">Cadastrar</button>
+        <p class="msg" id="dev-msg"></p>
+        <div class="tokenbox" id="tokenbox">
+          Comando para iniciar este sensor:
+          <code id="dev-cmd"></code>
+          <button type="button" class="ghost" id="dev-copy">Copiar comando</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>Teste de RTT (PING/PONG pelo WebSocket)</h2>
+      <div class="row">
+        <button type="button" id="rtt-btn">Medir 30 PINGs</button>
+        <span class="rtt-result" id="rtt-result"></span>
+      </div>
+      <p class="note">Mede o RTT de aplicação entre este navegador e o servidor. Para o relatório, use o script do experimento A.</p>
+    </section>
+
+    <section class="card">
+      <h2>Eventos</h2>
+      <div class="log" id="log"></div>
+    </section>
+  </div>
+</main>
+
+<script>
+"use strict";
+const COLORS = ["#2563eb", "#16a34a", "#d97706", "#9333ea", "#0891b2", "#db2777", "#65a30d", "#7c3aed"];
+const WINDOW_S = 120;          // janela do gráfico (s)
+const OFFLINE_AFTER_S = 5;     // sem dados por mais que isso = offline
+let SHOW_TEST = false;
+try { SHOW_TEST = localStorage.getItem("showTest") === "1"; } catch { /* sem armazenamento */ }
+const hidden = (id) => !SHOW_TEST && String(id).startsWith("exp-");
+
+const state = {
+  sensors: new Map(),
+  thresholds: { temp_max: null, hum_max: null },
+  clockOffset: 0,              // relógio do navegador − relógio do servidor (s)
+  ws: null, retry: 0,
+  pingSeq: 0, pending: new Map(),
+  arrivals: [],                // instantes de chegada de mensagens (taxa)
+  history: [],
+};
+
+// ------------------------------------------------------------- utilitários
+const $ = (s) => document.querySelector(s);
+function el(tag, props = {}, ...kids) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(props)) {
+    if (k === "class") e.className = v;
+    else if (k === "text") e.textContent = v;
+    else if (k === "style") e.style.cssText = v;
+    else e.setAttribute(k, v);
+  }
+  for (const c of kids) e.append(c);
+  return e;
+}
+const nf1 = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const nf2 = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmtDateTime = (s) => new Date(s * 1000).toLocaleString("pt-BR");
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+function log(text, level = "info") {
+  const box = $("#log");
+  box.prepend(el("div", { class: level }, el("span", { class: "t", text: new Date().toLocaleTimeString("pt-BR") + " " }), text));
+  while (box.children.length > 300) box.lastChild.remove();
+}
+
+async function api(path, opts = {}) {
+  const r = await fetch(path, { headers: { "Content-Type": "application/json" }, ...opts });
+  let body = null;
+  try { body = await r.json(); } catch { /* sem corpo JSON */ }
+  if (!r.ok) {
+    let d = body && body.detail;
+    if (Array.isArray(d)) d = d.map((x) => `${x.loc.slice(1).join(".")}: ${x.msg}`).join("; ");
+    throw new Error(d || `HTTP ${r.status}`);
+  }
+  return body;
+}
+
+function setMsg(id, text, kind = "") { const m = $(id); m.textContent = text; m.className = "msg " + kind; }
+
+// ------------------------------------------------------------- sensores
+function getSensor(id) {
+  let s = state.sensors.get(id);
+  if (!s) {
+    s = { id, color: COLORS[state.sensors.size % COLORS.length], temp: null, hum: null, seq: null,
+          online: false, lastLocal: 0, count: 0, series: [] };
+    state.sensors.set(id, s);
+    buildCard(s);
+  }
+  return s;
+}
+
+function buildCard(s) {
+  const empty = $("#no-sensors"); if (empty) empty.remove();
+  const dot = el("span", { class: "dot off" });
+  const status = el("span", { text: "offline" });
+  const temp = el("div", { class: "temp", text: "—" });
+  const hum = el("div", { class: "hum", text: "umidade —" });
+  const meta = el("div", { class: "meta", text: "sem leituras" });
+  const card = el("div", { class: "sensor", style: `--c:${s.color}` },
+    el("div", { class: "name" }, el("span", { text: s.id }), el("small", {}, dot, status)), temp, hum, meta);
+  s.dom = { card, dot, status, temp, hum, meta };
+  $("#sensors").append(card);
+  $("#legend").append(el("span", { style: `--c:${s.color}`, text: s.id }));
+  $("#hist-device").append(el("option", { value: s.id, text: s.id }));
+  updateCard(s);
+}
+
+function isOver(s) {
+  const t = state.thresholds;
+  return (s.temp != null && t.temp_max != null && s.temp > t.temp_max) ||
+         (s.hum != null && t.hum_max != null && s.hum > t.hum_max);
+}
+
+function updateCard(s) {
+  const d = s.dom;
+  d.temp.textContent = s.temp == null ? "—" : `${nf1.format(s.temp)} °C`;
+  d.hum.textContent = s.hum == null ? "umidade —" : `umidade ${nf1.format(s.hum)} %`;
+  d.dot.className = "dot " + (s.online ? "on" : "off");
+  d.status.textContent = s.online ? "online" : "offline";
+  d.meta.textContent = s.seq == null ? "sem leituras" : `seq ${s.seq} · ${s.count} msgs nesta sessão`;
+  d.card.classList.toggle("alert", s.online && isOver(s));
+  $("#online-count").textContent = [...state.sensors.values()].filter((x) => x.online).length;
+}
+
+function addPoint(s, serverTs, temp) {
+  s.series.push({ t: serverTs + state.clockOffset, v: temp });
+  const cut = Date.now() / 1000 - WINDOW_S - 5;
+  while (s.series.length && s.series[0].t < cut) s.series.shift();
+}
+
+// ------------------------------------------------------------- alertas
+function addAlert(a, live) {
+  const empty = $("#no-alerts"); if (empty) empty.remove();
+  const li = el("li", { class: live ? "new" : "" },
+    el("strong", { text: a.device_id }), el("span", { text: `${a.rule} · valor ${a.value}` }),
+    el("span", { class: "t", text: fmtDateTime(a.ts) }));
+  $("#alerts").prepend(li);
+  while ($("#alerts").children.length > 200) $("#alerts").lastChild.remove();
+  if (live) log(`ALERTA ${a.device_id}: ${a.rule} (valor ${a.value})`, "bad");
+}
+
+// ------------------------------------------------------------- WebSocket
+function setConn(kind) {
+  const map = { online: ["on", "WebSocket conectado"], offline: ["off", "desconectado — reconectando"], connecting: ["wait", "conectando…"] };
+  const [cls, text] = map[kind];
+  $("#conn").replaceChildren(el("span", { class: "dot " + cls }), el("span", { text }));
+}
+
+function connect() {
+  const url = `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws/dashboard`;
+  setConn("connecting");
+  const ws = new WebSocket(url);
+  state.ws = ws;
+  ws.onopen = () => {
+    const reconnected = state.retry > 0;
+    state.retry = 0;
+    setConn("online");
+    log("WebSocket conectado: " + url);
+    if (reconnected) loadDevices();          // ressincroniza após queda do servidor
+  };
+  ws.onmessage = onMessage;
+  ws.onclose = () => {
+    setConn("offline");
+    for (const done of state.pending.values()) done(null);
+    state.pending.clear();
+    const wait = Math.min(10, 2 ** state.retry++);
+    log(`WebSocket fechado; nova tentativa em ${wait} s`, "warn");
+    setTimeout(connect, wait * 1000);
+  };
+}
+
+function onMessage(ev) {
+  let m;
+  try { m = JSON.parse(ev.data); } catch { log("mensagem não-JSON recebida", "warn"); return; }
+  state.arrivals.push(performance.now());
+  if (m.device_id != null && hidden(m.device_id)) return;   // sensores criados pelos scripts de experimento
+  switch (m.type) {
+    case "UPDATE": {
+      const s = getSensor(m.device_id);
+      const p = m.payload || {};
+      s.temp = p.temp; s.hum = p.hum ?? null; s.seq = m.seq; s.count++;
+      s.online = true; s.lastLocal = Date.now() / 1000;
+      addPoint(s, m.server_ts, p.temp);
+      updateCard(s);
+      scheduleDraw();
+      break;
+    }
+    case "ALERT": addAlert(m, true); break;
+    case "STATUS": {
+      const s = getSensor(m.device_id);
+      s.online = !!m.online;
+      if (s.online) s.lastLocal = Date.now() / 1000;
+      updateCard(s);
+      log(`${m.device_id} ${m.online ? "conectou" : "desconectou"}`, m.online ? "info" : "warn");
+      break;
+    }
+    case "PONG": {
+      const done = state.pending.get(m.seq);
+      if (done) { state.pending.delete(m.seq); done(performance.now()); }
+      break;
+    }
+    case "ERROR": log(`ERROR ${m.code}: ${m.msg}`, "bad"); break;
+    default: log(`tipo desconhecido: ${m.type}`, "warn");
+  }
+}
+
+// ------------------------------------------------------------- RTT
+function ping() {
+  return new Promise((resolve) => {
+    const ws = state.ws;
+    if (!ws || ws.readyState !== WebSocket.OPEN) return resolve(null);
+    const seq = ++state.pingSeq, t0 = performance.now();
+    const timer = setTimeout(() => { state.pending.delete(seq); resolve(null); }, 3000);
+    state.pending.set(seq, (t1) => { clearTimeout(timer); resolve(t1 == null ? null : t1 - t0); });
+    ws.send(JSON.stringify({ type: "PING", seq, ts: Date.now() / 1000 }));
+  });
+}
+
+function stats(v) {
+  const s = [...v].sort((a, b) => a - b), n = s.length;
+  const mean = s.reduce((a, b) => a + b, 0) / n;
+  const median = n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2;
+  const sd = n > 1 ? Math.sqrt(s.reduce((a, x) => a + (x - mean) ** 2, 0) / (n - 1)) : 0;
+  return { n, mean, median, sd, min: s[0], max: s[n - 1] };
+}
+
+async function rttTest() {
+  const btn = $("#rtt-btn"), out = $("#rtt-result");
+  btn.disabled = true;
+  const vals = [];
+  for (let i = 0; i < 30; i++) {
+    const v = await ping();
+    if (v != null) vals.push(v);
+    out.textContent = `${i + 1}/30…`;
+    await sleep(100);
+  }
+  btn.disabled = false;
+  if (!vals.length) { out.textContent = "sem resposta"; return; }
+  const s = stats(vals);
+  out.textContent = `n=${s.n} · média ${nf2.format(s.mean)} ms · mediana ${nf2.format(s.median)} ms · dp ${nf2.format(s.sd)} ms · mín ${nf2.format(s.min)} · máx ${nf2.format(s.max)}`;
+  log(`RTT (${s.n} PINGs): média ${nf2.format(s.mean)} ms, mediana ${nf2.format(s.median)} ms`);
+}
+
+// ------------------------------------------------------------- gráfico
+let drawQueued = false;
+function scheduleDraw() { if (!drawQueued) { drawQueued = true; requestAnimationFrame(() => { drawQueued = false; draw(); }); } }
+
+function draw() {
+  const c = $("#chart"), dpr = window.devicePixelRatio || 1;
+  const W = c.clientWidth, H = c.clientHeight;
+  if (c.width !== Math.round(W * dpr) || c.height !== Math.round(H * dpr)) { c.width = Math.round(W * dpr); c.height = Math.round(H * dpr); }
+  const g = c.getContext("2d");
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.clearRect(0, 0, W, H);
+  const css = getComputedStyle(document.documentElement);
+  const muted = css.getPropertyValue("--muted").trim(), line = css.getPropertyValue("--line").trim(), bad = css.getPropertyValue("--bad").trim();
+
+  const now = Date.now() / 1000, t0 = now - WINDOW_S;
+  const L = 46, R = 14, T = 10, B = 24, pw = W - L - R, ph = H - T - B;
+  const vals = [];
+  for (const s of state.sensors.values()) for (const p of s.series) if (p.t >= t0) vals.push(p.v);
+  if (state.thresholds.temp_max != null) vals.push(state.thresholds.temp_max);
+  let lo = vals.length ? Math.min(...vals) : 15, hi = vals.length ? Math.max(...vals) : 35;
+  if (hi - lo < 4) { const m = (hi + lo) / 2; lo = m - 2; hi = m + 2; }
+  const pad = (hi - lo) * 0.08; lo -= pad; hi += pad;
+  const X = (t) => L + ((t - t0) / WINDOW_S) * pw, Y = (v) => T + (1 - (v - lo) / (hi - lo)) * ph;
+
+  g.font = "11px system-ui, sans-serif"; g.lineWidth = 1;
+  g.fillStyle = muted; g.strokeStyle = line; g.textAlign = "right"; g.textBaseline = "middle";
+  for (let i = 0; i <= 4; i++) {
+    const v = lo + ((hi - lo) * i) / 4, y = Y(v);
+    g.beginPath(); g.moveTo(L, y); g.lineTo(W - R, y); g.stroke();
+    g.fillText(nf1.format(v) + "°", L - 6, y);
+  }
+  g.textAlign = "center"; g.textBaseline = "top";
+  for (let k = 0; k <= 4; k++) {
+    const t = t0 + k * 30;
+    g.fillText(k === 4 ? "agora" : `−${WINDOW_S - k * 30} s`, X(t), H - B + 6);
+  }
+  if (state.thresholds.temp_max != null) {
+    const y = Y(state.thresholds.temp_max);
+    g.save(); g.setLineDash([5, 4]); g.strokeStyle = bad; g.lineWidth = 1.5;
+    g.beginPath(); g.moveTo(L, y); g.lineTo(W - R, y); g.stroke(); g.restore();
+  }
+  g.save(); g.beginPath(); g.rect(L, T, pw, ph); g.clip();
+  for (const s of state.sensors.values()) {
+    const pts = s.series.filter((p) => p.t >= t0 - 2);
+    if (!pts.length) continue;
+    g.strokeStyle = s.color; g.lineWidth = 2; g.lineJoin = "round";
+    g.beginPath();
+    pts.forEach((p, i) => (i ? g.lineTo(X(p.t), Y(p.v)) : g.moveTo(X(p.t), Y(p.v))));
+    g.stroke();
+    const last = pts[pts.length - 1];
+    g.fillStyle = s.color; g.beginPath(); g.arc(X(last.t), Y(last.v), 3, 0, 2 * Math.PI); g.fill();
+  }
+  g.restore();
+  if (!vals.length || vals.length === 1) {
+    g.fillStyle = muted; g.textAlign = "center"; g.textBaseline = "middle"; g.font = "13px system-ui, sans-serif";
+    g.fillText("Aguardando leituras…", L + pw / 2, T + ph / 2);
+  }
+}
+
+// ------------------------------------------------------------- carga inicial (HTTP)
+async function loadClock() {
+  const h = await api("/health");
+  state.clockOffset = Date.now() / 1000 - h.time;
+}
+
+async function loadThresholds() {
+  const t = await api("/thresholds");
+  applyThresholds(t);
+}
+
+function applyThresholds(t) {
+  state.thresholds = t;
+  $("#th-temp-in").value = t.temp_max; $("#th-hum-in").value = t.hum_max;
+  $("#th-temp").textContent = `${nf1.format(t.temp_max)} °C`;
+  for (const s of state.sensors.values()) updateCard(s);
+  scheduleDraw();
+}
+
+async function loadDevices() {
+  try {
+    const devices = await api("/devices");
+    for (const d of devices) {
+      if (hidden(d.device_id)) continue;
+      const s = getSensor(d.device_id);
+      s.online = d.online;
+      if (d.online) s.lastLocal = Date.now() / 1000;
+      if (!s.series.length) {
+        const rows = await api(`/history?device_id=${encodeURIComponent(d.device_id)}&limit=150`);
+        for (const r of rows.slice().reverse()) addPoint(s, r.server_ts, r.temp);
+        if (rows.length) { s.temp = rows[0].temp; s.hum = rows[0].hum; s.seq = rows[0].seq; }
+      }
+      updateCard(s);
+    }
+    scheduleDraw();
+  } catch (e) { log("falha ao carregar sensores: " + e.message, "bad"); }
+}
+
+async function loadAlerts() {
+  const list = await api("/alerts?limit=100");
+  for (const a of list.slice().reverse()) if (!hidden(a.device_id)) addAlert(a, false);
+}
+
+// ------------------------------------------------------------- formulários
+$("#th-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  try {
+    const t = await api("/thresholds", { method: "PUT",
+      body: JSON.stringify({ temp_max: parseFloat($("#th-temp-in").value), hum_max: parseFloat($("#th-hum-in").value) }) });
+    applyThresholds(t);
+    setMsg("#th-msg", "Limiares atualizados.", "ok");
+    log(`limiares alterados: temp > ${t.temp_max} °C, umid. > ${t.hum_max} %`);
+  } catch (err) { setMsg("#th-msg", err.message, "bad"); }
+});
+
+$("#dev-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const id = $("#dev-id").value.trim();
+  try {
+    const d = await api("/devices", { method: "POST", body: JSON.stringify({ device_id: id }) });
+    const host = location.host;
+    $("#dev-cmd").textContent = `python sensor/sensor.py --id ${d.device_id} --token ${d.token} --server ${host}`;
+    $("#tokenbox").style.display = "block";
+    setMsg("#dev-msg", `Sensor ${d.device_id} cadastrado. Guarde o token.`, "ok");
+    getSensor(d.device_id);
+    log(`sensor cadastrado: ${d.device_id}`);
+    $("#dev-id").value = "";
+  } catch (err) { setMsg("#dev-msg", err.message, "bad"); $("#tokenbox").style.display = "none"; }
+});
+
+$("#dev-copy").addEventListener("click", async () => {
+  const text = $("#dev-cmd").textContent;
+  try { await navigator.clipboard.writeText(text); setMsg("#dev-msg", "Comando copiado.", "ok"); }
+  catch {
+    const r = document.createRange(); r.selectNodeContents($("#dev-cmd"));
+    const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
+    setMsg("#dev-msg", "Comando selecionado; use Ctrl+C.", "");
+  }
+});
+
+$("#history-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const dev = $("#hist-device").value, limit = $("#hist-limit").value;
+  const q = new URLSearchParams({ limit }); if (dev) q.set("device_id", dev);
+  const t0 = performance.now();
+  try {
+    const rows = await api("/history?" + q);
+    const ms = performance.now() - t0;
+    state.history = rows;
+    const body = $("#hist-body");
+    body.replaceChildren();
+    if (!rows.length) body.append(el("tr", {}, el("td", { colspan: "6", class: "empty", text: "Nenhuma leitura." })));
+    for (const r of rows) {
+      body.append(el("tr", {},
+        el("td", { text: fmtDateTime(r.server_ts) }), el("td", { text: r.device_id }),
+        el("td", { class: "num", text: r.seq }), el("td", { class: "num", text: nf1.format(r.temp) }),
+        el("td", { class: "num", text: r.hum == null ? "—" : nf1.format(r.hum) }),
+        el("td", { class: "num", text: nf2.format((r.server_ts - r.ts) * 1000) })));
+    }
+    $("#hist-csv").disabled = !rows.length;
+    setMsg("#hist-msg", `${rows.length} leituras · tempo de resposta HTTP ${nf2.format(ms)} ms`, "ok");
+  } catch (err) { setMsg("#hist-msg", err.message, "bad"); }
+});
+
+$("#hist-csv").addEventListener("click", () => {
+  const head = "device_id,seq,ts_sensor,ts_servidor,temp_c,umid_pct\n";
+  const lines = state.history.map((r) => [r.device_id, r.seq, r.ts, r.server_ts, r.temp, r.hum ?? ""].join(","));
+  const blob = new Blob([head + lines.join("\n")], { type: "text/csv" });
+  const a = el("a", { href: URL.createObjectURL(blob), download: "historico.csv" });
+  document.body.append(a); a.click(); a.remove();
+});
+
+$("#rtt-btn").addEventListener("click", rttTest);
+$("#show-test").checked = SHOW_TEST;
+$("#show-test").addEventListener("change", (e) => {
+  try { localStorage.setItem("showTest", e.target.checked ? "1" : "0"); } catch { /* sem armazenamento */ }
+  location.reload();
+});
+window.addEventListener("resize", scheduleDraw);
+
+// ------------------------------------------------------------- ciclo de 1 s
+setInterval(() => {
+  const now = Date.now() / 1000;
+  for (const s of state.sensors.values()) {
+    if (s.online && s.lastLocal && now - s.lastLocal > OFFLINE_AFTER_S) {
+      s.online = false; updateCard(s);
+      log(`${s.id} sem dados há mais de ${OFFLINE_AFTER_S} s (offline)`, "warn");
+    }
+  }
+  const cut = performance.now() - 5000;
+  while (state.arrivals.length && state.arrivals[0] < cut) state.arrivals.shift();
+  $("#rate").textContent = nf1.format(state.arrivals.length / 5);
+  draw();
+}, 1000);
+
+// ------------------------------------------------------------- início
+(async function init() {
+  try { await loadClock(); } catch (e) { log("servidor indisponível (HTTP): " + e.message, "bad"); }
+  try { await loadThresholds(); } catch (e) { log("falha ao carregar limiares: " + e.message, "bad"); }
+  await loadDevices();
+  try { await loadAlerts(); } catch (e) { log("falha ao carregar alertas: " + e.message, "bad"); }
+  connect();
+  draw();
+})();
+</script>
+</body>
+</html>

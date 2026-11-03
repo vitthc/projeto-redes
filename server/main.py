@@ -12,11 +12,13 @@ import time
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 BASE = Path(__file__).parent
 DB_PATH = BASE / "data.db"
 LOG_PATH = BASE / "server.log"
+DASHBOARD = BASE.parent / "dashboard" / "index.html"
 
 # ---------------------------------------------------------------- logs
 logging.basicConfig(
@@ -104,6 +106,14 @@ class DeviceIn(BaseModel):
 class ThresholdsIn(BaseModel):
     temp_max: float = Field(ge=-40, le=85)
     hum_max: float = Field(ge=0, le=100)
+
+
+@app.get("/", include_in_schema=False)
+def dashboard_page():
+    """Entrega o painel Web (dashboard/index.html)."""
+    if not DASHBOARD.exists():
+        raise HTTPException(404, "dashboard/index.html não encontrado")
+    return FileResponse(DASHBOARD)
 
 
 @app.get("/health")
