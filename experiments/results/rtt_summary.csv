@@ -1,0 +1,7 @@
+condicao,modo,n,media_ms,mediana_ms,desvio_padrao_ms,min_ms,max_ms,p95_ms,intervalo_s,data_hora,maquina_cliente,so_cliente,python,servidor
+localhost,ws,30,0.858,0.8,0.239,0.593,1.92,1.347,0.2,2026-11-03 17:52:25,LAPTOP-3R0AE515,Windows 11,3.13.14,localhost:8000
+localhost,http,30,2048.93,2051.287,14.058,2019.984,2073.829,2073.256,0.2,2026-11-03 17:54:06,LAPTOP-3R0AE515,Windows 11,3.13.14,localhost:8000
+lan,ws,30,21.973,13.445,17.28,9.813,74.407,71.386,0.2,2026-11-03 18:00:56,localhost,Android 15,3.13.13,10.89.158.7:8000
+lan,http,30,63.445,50.791,54.432,22.039,305.603,146.813,0.2,2026-11-03 18:05:39,localhost,Android 15,3.13.13,10.89.158.7:8000
+localhost,http,30,9.814,4.312,8.605,3.241,28.11,26.864,0.2,2026-11-03 19:39:09,LAPTOP-3R0AE515,Windows 11,3.13.14,127.0.0.1:8000
+lan_atraso100_perda5,ws,30,528.952,505.491,273.209,302.583,1436.228,1430.756,0.2,2026-11-03 19:55:55,localhost,Android 15,3.13.13,10.89.158.7:8000

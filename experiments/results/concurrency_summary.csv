@@ -1,0 +1,7 @@
+condicao,clientes,duracao_s,taxa_por_cliente,enviadas,recebidas_painel,perdidas,erros,taxa_envio_msgs_s,taxa_recebida_msgs_s,atraso_media_ms,atraso_mediana_ms,atraso_dp_ms,atraso_p95_ms,atraso_max_ms,rtt_media_ms,rtt_mediana_ms,rtt_p95_ms,data_hora,maquina_cliente,so_cliente,python,servidor
+localhost,1,30,10,300,300,0,0,10.0,10.0,11.669,11.6,4.229,17.894,37.438,1.161,1.167,2.145,2026-11-03 17:54:35,LAPTOP-3R0AE515,Windows 11,3.13.14,localhost:8000
+localhost,2,30,10,600,600,0,0,20.0,20.0,13.703,12.061,8.992,28.22,89.824,2.524,1.051,13.56,2026-11-03 17:54:35,LAPTOP-3R0AE515,Windows 11,3.13.14,localhost:8000
+localhost,5,30,10,1500,1500,0,0,50.0,50.0,31.383,14.14,41.289,130.185,334.343,19.573,2.636,84.371,2026-11-03 17:54:35,LAPTOP-3R0AE515,Windows 11,3.13.14,localhost:8000
+lan,1,30,10,300,300,0,0,10.0,10.0,43.424,37.026,22.125,89.728,153.2,20.21,16.12,38.805,2026-11-03 18:09:38,localhost,Android 15,3.13.13,10.89.158.7:8000
+lan,2,30,10,600,600,0,0,20.0,20.0,66.782,52.091,44.634,161.485,292.525,33.563,27.536,72.293,2026-11-03 18:09:38,localhost,Android 15,3.13.13,10.89.158.7:8000
+lan,5,30,10,1500,1500,0,0,50.0,50.0,111.235,88.126,74.256,276.955,423.003,65.817,54.918,207.34,2026-11-03 18:09:38,localhost,Android 15,3.13.13,10.89.158.7:8000

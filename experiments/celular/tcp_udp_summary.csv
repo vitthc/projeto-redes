@@ -1,0 +1,6 @@
+condicao,protocolo,tamanho_bytes,intervalo_ms,enviados,recebidos,perdidos,perda_pct,fora_de_ordem,duplicados,erros_envio,tempo_s,goodput_kBps,rtt_media_ms,rtt_mediana_ms,rtt_dp_ms,rtt_p95_ms,rtt_max_ms,data_hora,maquina_cliente,so_cliente,python,servidor
+lan,TCP,512,2.0,1000,1000,0,0.0,0,0,0,2.0148,254.12,31.57,23.527,26.745,90.003,153.865,2026-11-03 18:15:13,localhost,Android 15,3.13.13,10.89.158.7:9001
+lan,UDP,512,2.0,1000,1000,0,0.0,0,0,0,2.016,253.97,30.366,22.621,25.571,95.067,133.007,2026-11-03 18:15:13,localhost,Android 15,3.13.13,10.89.158.7:9001
+lan_atraso100_perda5,TCP,512,2.0,1000,296,704,70.4,0,0,0,4.9102,30.86,2599.111,2451.272,1078.572,4282.918,4340.215,2026-11-03 19:58:03,localhost,Android 15,3.13.13,10.89.158.7:9001
+lan_atraso100_perda5,UDP,512,2.0,1000,884,116,11.6,0,0,0,2.3102,195.92,275.06,273.268,30.243,332.155,359.923,2026-11-03 19:58:03,localhost,Android 15,3.13.13,10.89.158.7:9001
+lan_atraso100_perda5,TCP,512,2.0,1000,1000,0,0.0,0,0,0,21.8932,23.39,11376.37,14041.395,6810.625,19397.262,19949.722,2026-11-03 20:47:46,localhost,Android 15,3.13.13,10.89.158.7:9001

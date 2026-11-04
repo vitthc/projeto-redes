@@ -52,7 +52,11 @@ def fmt(x, d=2):
 md = ["# Resumo dos experimentos\n"]
 
 # ------------------------------------------------------------------ A — RTT
-raws = sorted(RES.glob("rtt_raw_*.csv"))
+def _ordem(p):
+    s = p.stem
+    return ("lan" in s) + ("atraso" in s), "http" in s
+raws = sorted(RES.glob("rtt_raw_*.csv"), key=_ordem)
+
 if raws:
     labels, data, rows = [], [], []
     for p in raws:
@@ -72,7 +76,8 @@ if raws:
         bp = ax.boxplot(data, labels=labels, showmeans=True, patch_artist=True)
     for i, box in enumerate(bp["boxes"]):
         box.set(facecolor=COLORS[i % len(COLORS)] + "33", edgecolor=COLORS[i % len(COLORS)])
-    ax.set_ylabel("RTT (ms)")
+    ax.set_ylabel("RTT (ms, escala log)")
+    ax.set_yscale("log")
     ax.set_title("Experimento A — RTT por condição (triângulo = média)")
     fig.tight_layout()
     fig.savefig(FIG / "rtt_boxplot.png")
@@ -193,6 +198,7 @@ if dpath.exists():
     a1.set_title("Pacotes não recebidos")
     a2.set_ylabel("RTT mediano (ms)")
     a2.set_title("RTT")
+    a2.set_yscale("log")
     fig.suptitle("Experimento D/E — TCP × UDP (mesma carga e ritmo)")
     fig.tight_layout()
     fig.savefig(FIG / "tcp_udp.png")
